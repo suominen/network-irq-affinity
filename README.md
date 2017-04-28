@@ -20,3 +20,20 @@ I think I would want to keep each interface on its own CPU, but also
 on the same CPU as its possible queues. This probably should become
 a second pass through the IRQs, while paying attention to the affinity
 assigned to any queues in the first pass.
+
+To Do
+-----
+
+1.  Add an option to set the affinity hint instead. This can be useful
+    with [irqbalance(8)][3].
+
+See Also
+--------
+
+* [Scaling in the Linux Networking Stack][1]
+* [SMP IRQ Affinity][2]
+* [Irqbalance][3]
+
+[1]: https://www.kernel.org/doc/Documentation/networking/scaling.txt
+[2]: https://www.kernel.org/doc/Documentation/IRQ-affinity.txt
+[3]: https://github.com/Irqbalance/irqbalance
