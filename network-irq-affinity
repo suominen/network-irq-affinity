@@ -1,0 +1,200 @@
+#!/bin/sh
+# @(#)$KimmoSuominen$
+#
+# Copyright (c) 2017 Kimmo Suominen
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. The name of the author may not be used to endorse or promote
+#    products derived from this software without specific prior
+#    written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+# IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# ----------------------------------------------------------------------------
+
+# Network drivers don't seem to create queues before the interface
+# has been marked up. Therefore you'd want to call this script from
+# the interfaces(5) file using the "up" option.
+#
+# Unless you have multiple interfaces on your system, in which case
+# you would want to somehow call this after all interfaces have been
+# configured. This is especially necessary in the case where we just
+# rotate through CPU IDs.
+
+# ----------------------------------------------------------------------------
+
+PATH=/bin:/usr/bin
+export PATH
+
+PROG="${0##*/}"
+
+# ----------------------------------------------------------------------------
+
+die()
+{
+    echo "${PROG}: ${@}" 1>&2
+    exit 1
+}
+
+fatal()
+{
+    echo "${PROG}: ${@}" 1>&2
+}
+
+verbose()
+{
+    if ${verbose}
+    then
+	echo "${PROG}: ${@}"
+    fi
+}
+
+warn()
+{
+    if ! ${quiet}
+    then
+	echo "${PROG}: ${@}" 1>&2
+    fi
+}
+
+usage()
+{
+    cat <<-EOF
+	Usage:  ${PROG} [-nqv]
+
+	Options:
+	-n	Do not change anything, just show what would be done.
+	-q	Quiet; only output fatal errors.
+	-v	Verbose output of changes made.
+	EOF
+}
+
+# ----------------------------------------------------------------------------
+
+network_irqs()
+{
+    local dir irq queue
+    for dir in /proc/irq/*/eth*
+    do
+	case "${dir}" in
+	*'*'*)
+	    ;;
+	*)
+	    queue="${dir##*/}"
+	    dir="${dir%/*}"
+	    irq="${dir##*/}"
+	    echo "${queue}/${irq}"
+	    ;;
+	esac
+    done
+}
+
+set_affinity()
+{
+    local cpu irq list que
+
+    irq="${1}"
+    cpu="${2}"
+    que="${3}"
+
+    case "${cpu}" in
+    [0-9]|[0-9][0-9]|[0-9][0-9][0-9])
+	;;
+    *)
+	warn "Skipping odd queue number '${cpu}' in '${queirq}'"
+	return
+	;;
+    esac
+
+    if ! { echo "${cpulist}" | grep -q "${cpu}" ; }
+    then
+	warn "Could not map ${que} to a CPU ID"
+	cpu=0
+    fi
+    verbose "Assigning ${que} on IRQ ${irq} to CPU ${cpu}"
+    if ${noop}
+    then
+	:
+    else
+	list="/proc/irq/${irq}/smp_affinity_list"
+	if [ -w "${list}" ]
+	then
+	    echo "${cpu}" > "${list}"
+	else
+	    fatal "Cannot write to '${list}'"
+	fi
+    fi
+}
+
+use_cpu()
+{
+    # Side-effects -- don't call from a subshell.
+    cpu=$(echo "${cpulist}" | sed -e 1q)
+    cpulist=$(echo "${cpulist}" | sed -e 1d ; echo "${cpu}")
+}
+
+# ----------------------------------------------------------------------------
+
+noop=false
+quiet=false
+verbose=false
+
+while getopts nqv opt
+do
+    case "${opt}" in
+    n) noop=true; quiet=false; verbose=true;;
+    q) quiet=true; verbose=false;;
+    v) verbose=true; quiet=false;;
+    *) usage 1>&2; exit 1;;
+    esac
+done
+shift $((${OPTIND} - 1))
+
+# We assume all processors from 0 to N are online.
+#ncpu=$(getconf _NPROCESSORS_ONLN)
+
+# Obtain a list of online logical CPU IDs.
+cpulist=$(lscpu -p=cpu | grep -v '^#' | cut -d, -f1)
+
+for queirq in $(network_irqs)
+do
+    irq="${queirq##*/}"
+    que="${queirq%/*}"
+    case "${que}" in
+    *-q*-[rt]x)
+	# xen
+	cpu="${que#*-q}"
+	cpu="${cpu%-*}"
+	set_affinity "${irq}" "${cpu}" "${que}"
+	;;
+    *-[rt]x-*)
+	# e100e
+	cpu="${que##*-}"
+	set_affinity "${irq}" "${cpu}" "${que}"
+	;;
+    *-TxRx-*)
+	# igb
+	#cpu="${que##*-}"
+	use_cpu
+	set_affinity "${irq}" "${cpu}" "${que}"
+	;;
+    *)
+	warn "Skipping '${queirq}'"
+	;;
+    esac
+done
