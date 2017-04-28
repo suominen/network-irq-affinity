@@ -3,7 +3,7 @@ Network IRQ Affinity
 
 This script sets the CPU affinity for network interfaces across all
 the CPUs in an efficient manner. By default the Linux kernel assigns
-all queues and interfaces in CPU ID 0. This can become a performance
+all queues and interfaces to CPU ID 0. This can become a performance
 bottleneck.
 
 Known Issues

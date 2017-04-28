@@ -173,12 +173,6 @@ do
     irq="${queirq##*/}"
     que="${queirq%/*}"
     case "${que}" in
-    *-q*-[rt]x)
-	# xen
-	cpu="${que#*-q}"
-	cpu="${cpu%-*}"
-	set_affinity "${irq}" "${cpu}" "${que}"
-	;;
     *-[rt]x-*)
 	# e100e
 	cpu="${que##*-}"
@@ -187,7 +181,16 @@ do
     *-TxRx-*)
 	# igb
 	#cpu="${que##*-}"
+	# Rotating through CPUs works better for multiple interfaces.
+	# As there are no separate tx/rx queues, this won't result in
+	# splitting the traffic across CPUs.
 	use_cpu
+	set_affinity "${irq}" "${cpu}" "${que}"
+	;;
+    *-q*-[rt]x)
+	# xen_netfront
+	cpu="${que#*-q}"
+	cpu="${cpu%-*}"
 	set_affinity "${irq}" "${cpu}" "${que}"
 	;;
     *)
