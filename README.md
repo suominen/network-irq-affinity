@@ -26,6 +26,7 @@ To Do
 
 1.  Add an option to set the affinity hint instead. This can be useful
     with [irqbalance(8)][3].
+2.  Write a manual page.
 
 See Also
 --------
