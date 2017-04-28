@@ -101,6 +101,9 @@ network_irqs()
 	    ;;
 	esac
     done
+    awk '
+	$NF ~ /^eth/ {print $NF "/" gensub(/:$/, "", 1, $1);}
+	' /proc/interrupts
 }
 
 set_affinity()
@@ -141,6 +144,11 @@ set_affinity()
 use_cpu()
 {
     # Side-effects -- don't call from a subshell.
+
+    # Rotating through CPUs works better for multiple interfaces.
+    # As there are no separate tx/rx queues, this won't result in
+    # splitting the traffic across CPUs.
+
     cpu=$(echo "${cpulist}" | sed -e 1q)
     cpulist=$(echo "${cpulist}" | sed -e 1d ; echo "${cpu}")
 }
@@ -181,9 +189,6 @@ do
     *-TxRx-*)
 	# igb
 	#cpu="${que##*-}"
-	# Rotating through CPUs works better for multiple interfaces.
-	# As there are no separate tx/rx queues, this won't result in
-	# splitting the traffic across CPUs.
 	use_cpu
 	set_affinity "${irq}" "${cpu}" "${que}"
 	;;
@@ -191,6 +196,12 @@ do
 	# xen_netfront
 	cpu="${que#*-q}"
 	cpu="${cpu%-*}"
+	set_affinity "${irq}" "${cpu}" "${que}"
+	;;
+    *-[0-9]|*-[0-9][0-9]|*-[0-9][0-9][0-9])
+	# sfc
+	#cpu="${que##*-}"
+	use_cpu
 	set_affinity "${irq}" "${cpu}" "${que}"
 	;;
     *)
