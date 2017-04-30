@@ -69,7 +69,7 @@ warn()
 usage()
 {
     cat <<-EOF
-	Usage:  ${PROG} [-nqv]
+	Usage:  ${PROG} [-hnqv]
 
 	Options:
 	-h	Show this usage message.
