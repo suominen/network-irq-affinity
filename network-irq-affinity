@@ -85,7 +85,10 @@ usage()
 
 # ----------------------------------------------------------------------------
 
-network_irqs()
+# Having the nodes under each irq is pretty, but not all drivers populate
+# them. E.g. sfc just puts a PCI bus address there.
+
+network_irqs_from_each_irq()
 {
     local dir irq queue
     for dir in /proc/irq/*/eth*
@@ -101,6 +104,10 @@ network_irqs()
 	    ;;
 	esac
     done
+}
+
+network_irqs()
+{
     awk '
 	$NF ~ /^eth/ {print $NF "/" gensub(/:$/, "", 1, $1);}
 	' /proc/interrupts
