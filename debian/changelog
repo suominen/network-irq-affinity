@@ -1,0 +1,5 @@
+network-irq-affinity (1.0) unstable; urgency=low
+
+  * Initial release
+
+ -- Kimmo Suominen <kimmo@suominen.com>  Mon, 01 May 2017 01:42:07 +0300

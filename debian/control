@@ -1,0 +1,15 @@
+Source: network-irq-affinity
+Section: net
+Priority: extra
+Maintainer: Kimmo Suominen <kimmo@suominen.com>
+Build-Depends: debhelper (>= 7.0.50~), pmake
+Standards-Version: 3.8.4
+Homepage: https://github.com/suominen/network-irq-affinity
+
+Package: network-irq-affinity
+Architecture: all
+Depends: ${misc:Depends}
+Description: Set CPU affinity for network interface IRQs
+ The network-irq-affinity utility sets the CPU affinity of IRQs attached
+ to network interfaces and network interface queues. The IRQs will be dis-
+ tributed across all the CPUs in an efficient manner.
