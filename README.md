@@ -14,6 +14,7 @@ assigned:
 
 * e1000e
 * igb
+* sfc
 * xen_netfront
 
 I think I would want to keep each interface on its own CPU, but also
@@ -24,9 +25,7 @@ assigned to any queues in the first pass.
 To Do
 -----
 
-1.  Add an option to set the affinity hint instead. This can be useful
-    with [irqbalance(8)][3].
-2.  Write a manual page.
+1.  Write a manual page.
 
 See Also
 --------
