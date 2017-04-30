@@ -77,6 +77,7 @@ usage()
 	Usage:  ${PROG} [-nqv]
 
 	Options:
+	-h	Show this usage message.
 	-n	Do not change anything, just show what would be done.
 	-q	Quiet; only output fatal errors.
 	-v	Verbose output of changes made.
@@ -166,9 +167,10 @@ noop=false
 quiet=false
 verbose=false
 
-while getopts nqv opt
+while getopts hnqv opt
 do
     case "${opt}" in
+    h) usage; exit 0;;
     n) noop=true; quiet=false; verbose=true;;
     q) quiet=true; verbose=false;;
     v) verbose=true; quiet=false;;
