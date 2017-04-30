@@ -110,17 +110,43 @@ network_irqs_from_each_irq()
 network_irqs()
 {
     awk '
-	$NF ~ /^eth/ {print $NF "/" gensub(/:$/, "", 1, $1);}
+	$NF ~ /^eth/ {gsub(/:$/, "", $1); print $NF "/" $1;}
 	' /proc/interrupts
+}
+
+recall_cpu()
+{
+    echo "${1}" \
+    | grep "^${2}-" \
+    | sed -e 's,^.*-,,' \
+    | sort -n \
+    | sed -e 's,^.*/,,' -e 1q
+}
+
+remember_cpu()
+{
+    case "${1}" in
+    '')
+	;;
+    *)
+	echo "${1}"
+	;;
+    esac
+    if ! echo "${1}" | grep -q "^${2}/"
+    then
+	echo "${2}/${3}"
+    fi
 }
 
 set_affinity()
 {
-    local cpu file irq que
+    local cpu file irq ok que
 
     irq="${1}"
     cpu="${2}"
     que="${3}"
+
+    ok=false
 
     case "${cpu}" in
     [0-9]|[0-9][0-9]|[0-9][0-9][0-9])
@@ -131,21 +157,29 @@ set_affinity()
 	;;
     esac
 
-    if ! { echo "${cpulist}" | grep -q "${cpu}" ; }
+    if ! echo "${cpulist}" | grep -q "${cpu}"
     then
 	warn "Could not map ${que} to a CPU ID"
 	cpu=0
     fi
     verbose "Assigning ${que} on IRQ ${irq} to CPU ${cpu}"
-    if ! ${noop}
+    if ${noop}
     then
+	ok=true
+    else
 	file="/proc/irq/${irq}/smp_affinity_list"
 	if [ -w "${file}" ]
 	then
 	    echo "${cpu}" > "${file}"
+	    # This is for caching the CPU, not for actual success check.
+	    ok=true
 	else
 	    fatal "Cannot write to '${file}'"
 	fi
+    fi
+    if ${ok}
+    then
+	cpucache=$(remember_cpu "${cpucache}" "${que}" "${cpu}")
     fi
 }
 
@@ -185,36 +219,57 @@ shift $((${OPTIND} - 1))
 # Obtain a list of online logical CPU IDs.
 cpulist=$(lscpu -p=cpu | grep -v '^#' | cut -d, -f1)
 
-for queirq in $(network_irqs)
+cpucache=
+
+for pass in 1 2
 do
-    irq="${queirq##*/}"
-    que="${queirq%/*}"
-    case "${que}" in
-    *-[rt]x-*)
-	# e100e
-	cpu="${que##*-}"
-	set_affinity "${irq}" "${cpu}" "${que}"
-	;;
-    *-TxRx-*)
-	# igb
-	#cpu="${que##*-}"
-	use_cpu
-	set_affinity "${irq}" "${cpu}" "${que}"
-	;;
-    *-q*-[rt]x)
-	# xen_netfront
-	cpu="${que#*-q}"
-	cpu="${cpu%-*}"
-	set_affinity "${irq}" "${cpu}" "${que}"
-	;;
-    *-[0-9]|*-[0-9][0-9]|*-[0-9][0-9][0-9])
-	# sfc
-	#cpu="${que##*-}"
-	use_cpu
-	set_affinity "${irq}" "${cpu}" "${que}"
-	;;
-    *)
-	warn "Skipping '${queirq}'"
-	;;
-    esac
+    for queirq in $(network_irqs)
+    do
+	irq="${queirq##*/}"
+	que="${queirq%/*}"
+
+	if echo "${cpucache}" | grep -q "^${que}/"
+	then
+	    continue
+	fi
+
+	case "${que}" in
+	*-[rt]x-*)
+	    # e100e
+	    cpu="${que##*-}"
+	    set_affinity "${irq}" "${cpu}" "${que}"
+	    ;;
+	*-TxRx-*)
+	    # igb
+	    #cpu="${que##*-}"
+	    use_cpu
+	    set_affinity "${irq}" "${cpu}" "${que}"
+	    ;;
+	*-q*-[rt]x)
+	    # xen_netfront
+	    cpu="${que#*-q}"
+	    cpu="${cpu%-*}"
+	    set_affinity "${irq}" "${cpu}" "${que}"
+	    ;;
+	*-[0-9]|*-[0-9][0-9]|*-[0-9][0-9][0-9])
+	    # sfc
+	    #cpu="${que##*-}"
+	    use_cpu
+	    set_affinity "${irq}" "${cpu}" "${que}"
+	    ;;
+	*)
+	    case "${pass}" in
+	    2)
+		cpu=$(recall_cpu "${cpucache}" "${que}")
+		case "${cpu}" in
+		'')
+		    use_cpu
+		    ;;
+		esac
+		set_affinity "${irq}" "${cpu}" "${que}"
+		;;
+	    esac
+	    ;;
+	esac
+    done
 done
