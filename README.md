@@ -40,12 +40,6 @@ drivers are assigned:
 Please send pull requests for additional naming schemes.
 
 
-To Do
------
-
-1.  Write a manual page.
-
-
 See Also
 --------
 
