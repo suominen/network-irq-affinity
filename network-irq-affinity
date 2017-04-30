@@ -27,13 +27,8 @@
 # ----------------------------------------------------------------------------
 
 # Network drivers don't seem to create queues before the interface
-# has been marked up. Therefore you'd want to call this script from
-# the interfaces(5) file using the "up" option.
-#
-# Unless you have multiple interfaces on your system, in which case
-# you would want to somehow call this after all interfaces have been
-# configured. This is especially necessary in the case where we just
-# rotate through CPU IDs.
+# has been marked up. Therefore you'd want to call this script after
+# the network has been fully configured.
 
 # ----------------------------------------------------------------------------
 
@@ -114,12 +109,19 @@ network_irqs()
 	' /proc/interrupts
 }
 
-recall_cpu()
+recall_interface_cpu()
 {
     echo "${1}" \
     | grep "^${2}-" \
     | sed -e 's,^.*-,,' \
     | sort -n \
+    | sed -e 's,^.*/,,' -e 1q
+}
+
+recall_queue_cpu()
+{
+    echo "${1}" \
+    | grep "^${2}/" \
     | sed -e 's,^.*/,,' -e 1q
 }
 
@@ -149,11 +151,9 @@ set_affinity()
     ok=false
 
     case "${cpu}" in
-    [0-9]|[0-9][0-9]|[0-9][0-9][0-9])
-	;;
-    *)
-	warn "Skipping odd queue number '${cpu}' in '${queirq}'"
-	return
+    '')
+	cpu=$(echo "${cpulist}" | sed -e 1q)
+	cpulist=$(echo "${cpulist}" | sed -e 1d ; echo "${cpu}")
 	;;
     esac
 
@@ -181,18 +181,6 @@ set_affinity()
     then
 	cpucache=$(remember_cpu "${cpucache}" "${que}" "${cpu}")
     fi
-}
-
-use_cpu()
-{
-    # Side-effects -- don't call from a subshell.
-
-    # Rotating through CPUs works better for multiple interfaces.
-    # As there are no separate tx/rx queues, this won't result in
-    # splitting the traffic across CPUs.
-
-    cpu=$(echo "${cpulist}" | sed -e 1q)
-    cpulist=$(echo "${cpulist}" | sed -e 1d ; echo "${cpu}")
 }
 
 # ----------------------------------------------------------------------------
@@ -225,47 +213,60 @@ for pass in 1 2
 do
     for queirq in $(network_irqs)
     do
-	irq="${queirq##*/}"
 	que="${queirq%/*}"
-
 	if echo "${cpucache}" | grep -q "^${que}/"
 	then
 	    continue
 	fi
 
+	cpu=
+	dir=
+	int="${que%%-*}"
+	irq="${queirq##*/}"
+	qno=
+
 	case "${que}" in
 	*-[rt]x-*)
 	    # e100e
-	    cpu="${que##*-}"
+	    qno="${que##*-}"
+	    case "${que}" in
+	    *-rx-*)
+		dir=tx
+		;;
+	    *)
+		dir=rx
+		;;
+	    esac
+	    cpu=$(recall_queue_cpu "${cpucache}" "${int}-${dir}-${qno}")
 	    set_affinity "${irq}" "${cpu}" "${que}"
 	    ;;
 	*-TxRx-*)
 	    # igb
-	    #cpu="${que##*-}"
-	    use_cpu
 	    set_affinity "${irq}" "${cpu}" "${que}"
 	    ;;
 	*-q*-[rt]x)
 	    # xen_netfront
-	    cpu="${que#*-q}"
-	    cpu="${cpu%-*}"
+	    qno="${que#*-q}"
+	    qno="${qno%-*}"
+	    case "${que}" in
+	    *-rx)
+		dir=tx
+		;;
+	    *)
+		dir=rx
+		;;
+	    esac
+	    cpu=$(recall_queue_cpu "${cpucache}" "${int}-q${qno}-${dir}")
 	    set_affinity "${irq}" "${cpu}" "${que}"
 	    ;;
 	*-[0-9]|*-[0-9][0-9]|*-[0-9][0-9][0-9])
 	    # sfc
-	    #cpu="${que##*-}"
-	    use_cpu
 	    set_affinity "${irq}" "${cpu}" "${que}"
 	    ;;
 	*)
 	    case "${pass}" in
 	    2)
-		cpu=$(recall_cpu "${cpucache}" "${que}")
-		case "${cpu}" in
-		'')
-		    use_cpu
-		    ;;
-		esac
+		cpu=$(recall_interface_cpu "${cpucache}" "${que}")
 		set_affinity "${irq}" "${cpu}" "${que}"
 		;;
 	    esac
