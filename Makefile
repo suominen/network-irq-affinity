@@ -6,9 +6,14 @@ PREFIX	= /usr
 BINDIR	= ${PREFIX}/sbin
 MANDIR	= ${PREFIX}/share/man
 
-SCRIPTS	= network-irq-affinity
-MAN	= ${SCRIPTS:C/(.*)/\1.8/}
+PROG	= network-irq-affinity
 
-CLEANFILES+=	${SCRIPTS}
+all:
+# Nothing to be done for now.
 
-.include <bsd.prog.mk>
+install:
+	install -m 0755 ${PROG}.sh ${DESTDIR}${BINDIR}/${PROG}
+	install -m 0644 ${PROG}.8  ${DESTDIR}${MANDIR}/man8/${PROG}.8
+
+clean:
+# Nothing to be done for now.

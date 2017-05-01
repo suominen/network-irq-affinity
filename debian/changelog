@@ -1,9 +1,10 @@
-network-irq-affinity (1.1) UNRELEASED; urgency=medium
+network-irq-affinity (1.1) unstable; urgency=medium
 
   * Remove -q option; it is not useful.
   * Improve warning messages.
+  * Remove dependency on pmake, so we can build on wheezy.
 
- -- Kimmo Suominen <kimmo@suominen.com>  Mon, 01 May 2017 05:10:07 +0300
+ -- Kimmo Suominen <kimmo@suominen.com>  Mon, 01 May 2017 17:52:23 +0300
 
 network-irq-affinity (1.0) unstable; urgency=low
 

@@ -10,7 +10,7 @@ build-arch: build-stamp
 build-indep: build-stamp
 build-stamp:
 	dh_testdir
-	MAKE=pmake dh_auto_build
+	dh_auto_build
 	touch build-stamp
 
 .PHONY: clean
@@ -18,7 +18,7 @@ clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp
-	MAKE=pmake dh_auto_clean
+	dh_auto_clean
 
 .PHONY: install
 install: build
@@ -26,7 +26,7 @@ install: build
 	dh_testroot
 	dh_prep
 	dh_installdirs
-	MAKE=pmake dh_auto_install
+	dh_auto_install
 
 .PHONY: binary binary-indep binary-arch
 binary: binary-indep binary-arch
