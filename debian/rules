@@ -4,24 +4,32 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-build: build-stamp
+.PHONY: build build-arch build-indep
+build: build-arch build-indep
+build-arch: build-stamp
+build-indep: build-stamp
 build-stamp:
 	dh_testdir
 	MAKE=pmake dh_auto_build
 	touch build-stamp
 
+.PHONY: clean
 clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp
 	MAKE=pmake dh_auto_clean
 
+.PHONY: install
 install: build
 	dh_testdir
 	dh_testroot
 	dh_prep
 	dh_installdirs
 	MAKE=pmake dh_auto_install
+
+.PHONY: binary binary-indep binary-arch
+binary: binary-indep binary-arch
 
 # Build architecture-independent files here.
 binary-indep: build install
@@ -40,6 +48,3 @@ binary-indep: build install
 # Build architecture-dependent files here.
 binary-arch: build install
 # We have nothing to do by default.
-
-binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install

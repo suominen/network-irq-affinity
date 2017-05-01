@@ -3,7 +3,7 @@ Section: net
 Priority: extra
 Maintainer: Kimmo Suominen <kimmo@suominen.com>
 Build-Depends: debhelper (>= 7.0.50~), pmake
-Standards-Version: 3.8.4
+Standards-Version: 3.9.6
 Homepage: https://github.com/suominen/network-irq-affinity
 
 Package: network-irq-affinity
