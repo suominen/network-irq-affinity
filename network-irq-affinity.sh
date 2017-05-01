@@ -147,7 +147,7 @@ set_affinity()
     *)
 	if ! echo "${cpulist}" | grep -q "${cpu}"
 	then
-	    warn "CPU #${cpu} is no valid (queue '${que}')"
+	    warn "CPU ID ${cpu} is invalid (${que})"
 	    cpu=0
 	fi
 	;;
@@ -163,7 +163,7 @@ set_affinity()
 	then
 	    echo "${cpu}" > "${file}"
 	else
-	    warn "Cannot write to '${file}'"
+	    warn "Cannot write to ${file}"
 	fi
     fi
 }
