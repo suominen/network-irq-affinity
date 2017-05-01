@@ -1,3 +1,9 @@
+network-irq-affinity (1.1) UNRELEASED; urgency=medium
+
+  * Remove -q option; it is not useful.
+
+ -- Kimmo Suominen <kimmo@suominen.com>  Mon, 01 May 2017 05:10:07 +0300
+
 network-irq-affinity (1.0) unstable; urgency=low
 
   * Initial release

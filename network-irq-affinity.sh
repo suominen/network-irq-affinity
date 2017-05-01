@@ -45,11 +45,6 @@ die()
     exit 1
 }
 
-fatal()
-{
-    echo "${PROG}: ${@}" 1>&2
-}
-
 verbose()
 {
     if ${verbose}
@@ -60,21 +55,17 @@ verbose()
 
 warn()
 {
-    if ! ${quiet}
-    then
-	echo "${PROG}: ${@}" 1>&2
-    fi
+    echo "${PROG}: ${@}" 1>&2
 }
 
 usage()
 {
     cat <<-EOF
-	Usage:  ${PROG} [-hnqv]
+	Usage:  ${PROG} [-hnv]
 
 	Options:
 	-h	Show this usage message.
 	-n	Do not change anything, just show what would be done.
-	-q	Quiet; only output fatal errors.
 	-v	Verbose output of changes made.
 	EOF
 }
@@ -142,60 +133,52 @@ remember_cpu()
 
 set_affinity()
 {
-    local cpu file irq ok que
+    local cpu file irq que
 
     irq="${1}"
     cpu="${2}"
     que="${3}"
-
-    ok=false
 
     case "${cpu}" in
     '')
 	cpu=$(echo "${cpulist}" | sed -e 1q)
 	cpulist=$(echo "${cpulist}" | sed -e 1d ; echo "${cpu}")
 	;;
+    *)
+	if ! echo "${cpulist}" | grep -q "${cpu}"
+	then
+	    warn "CPU #${cpu} is no valid (queue '${que}')"
+	    cpu=0
+	fi
+	;;
     esac
 
-    if ! echo "${cpulist}" | grep -q "${cpu}"
-    then
-	warn "Could not map ${que} to a CPU ID"
-	cpu=0
-    fi
     verbose "Assigning ${que} on IRQ ${irq} to CPU ${cpu}"
-    if ${noop}
+    cpucache=$(remember_cpu "${cpucache}" "${que}" "${cpu}")
+
+    if ! ${noop}
     then
-	ok=true
-    else
 	file="/proc/irq/${irq}/smp_affinity_list"
 	if [ -w "${file}" ]
 	then
 	    echo "${cpu}" > "${file}"
-	    # This is for caching the CPU, not for actual success check.
-	    ok=true
 	else
-	    fatal "Cannot write to '${file}'"
+	    warn "Cannot write to '${file}'"
 	fi
-    fi
-    if ${ok}
-    then
-	cpucache=$(remember_cpu "${cpucache}" "${que}" "${cpu}")
     fi
 }
 
 # ----------------------------------------------------------------------------
 
 noop=false
-quiet=false
 verbose=false
 
-while getopts hnqv opt
+while getopts hnv opt
 do
     case "${opt}" in
     h) usage; exit 0;;
-    n) noop=true; quiet=false; verbose=true;;
-    q) quiet=true; verbose=false;;
-    v) verbose=true; quiet=false;;
+    n) noop=true; verbose=true;;
+    v) verbose=true;;
     *) usage 1>&2; exit 1;;
     esac
 done
