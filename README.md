@@ -40,6 +40,14 @@ drivers are assigned:
 Please send pull requests for additional naming schemes.
 
 
+Download
+--------
+
+Signed releases can be downloaded from my software distribution server:
+
+> http://software.kimmo.suominen.com/
+
+
 See Also
 --------
 
